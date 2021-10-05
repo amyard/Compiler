@@ -15,36 +15,40 @@ namespace mc
                 var line = Console.ReadLine();
                 if(string.IsNullOrWhiteSpace(line)) return;
 
-                var lexer = new Lexer(line);
-                while (true)
-                {
-                    var token = lexer.NextToken();
-                    if (token.Kind == SyntaxKind.EndOfFileToken)
-                        break;
+                var parser = new Parser(line);
+                var expression = parser.Parse();
 
-                    StringBuilder sb = new StringBuilder();
-                    sb.Append($"{token.Kind}: '{token.Text}'");
-                    if(token.Value != null) sb.Append($" {token.Value}");
-                    
-                    Console.WriteLine(sb);
-                }
+                var color = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                PrettyPrint(expression);
+                Console.ForegroundColor = color;
             }
         }
 
-        static void PrettyPrint(SyntaxNode node, string indent = "")
+        static void PrettyPrint(SyntaxNode node, string indent = "", bool isLast = true)
         {
-            Console.WriteLine(node.Kind);
+
+            StringBuilder sb = new StringBuilder();
+
+            var marker = isLast ? "└──" : "├──";
+            
+            sb.Append(indent);
+            sb.Append(marker);
+            sb.Append(node.Kind);
 
             if (node is SyntaxToken t && t.Value != null)
             {
-                Console.WriteLine(" ");
-                Console.WriteLine(t.Value);
-            }
+                sb.Append(" ");
+                sb.Append(t.Value);
+            } 
+            
+            Console.WriteLine(sb);
 
-            indent += "     ";
+            indent += isLast ? "    " : "│   ";
+            var lastChild = node.GetChildren().LastOrDefault();
 
             foreach (var child in node.GetChildren())
-                PrettyPrint(child, indent);
+                PrettyPrint(child, indent, child == lastChild);
         }
     }
     
@@ -263,6 +267,8 @@ namespace mc
                 var right = ParsePrimaryExpression();
                 left = new BinaryExpressionSyntax(left, operatorToken, right);
             }
+
+            return left;
         }
 
         private ExpressionSyntax ParsePrimaryExpression()
