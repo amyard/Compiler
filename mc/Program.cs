@@ -22,6 +22,16 @@ namespace mc
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 PrettyPrint(expression);
                 Console.ForegroundColor = color;
+
+                if (parser.Diagnostics.Any())
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed;
+
+                    foreach (var diagnostic in parser.Diagnostics)
+                        Console.WriteLine(diagnostic);
+                    
+                    Console.ForegroundColor = color;
+                }
             }
         }
 
@@ -94,12 +104,14 @@ namespace mc
     {
         private readonly string _text;
         private int _position;
+        private List<string> _diagnostics = new List<string>();
         
         public Lexer(string text)
         {
             _text = text;
         }
 
+        public IEnumerable<string> Diagnostics => _diagnostics;
         private char Current
         {
             get
@@ -153,7 +165,8 @@ namespace mc
             if(Current == '(') return new SyntaxToken(SyntaxKind.OpenParenthesisToken, _position++, "-", null);
             if(Current == ')') return new SyntaxToken(SyntaxKind.CloseParenthesisToken, _position++, "-", null);
 
-
+            _diagnostics.Add($"Error: bad character input: '{Current}'");
+            
             return new SyntaxToken(SyntaxKind.BadToken, _position++, _text.Substring(_position - 1, 1), null);
         }
     }
@@ -216,6 +229,7 @@ namespace mc
     {
         private readonly SyntaxToken[] _tokens;
         private int _position;
+        private List<string> _diagnostics = new List<string>();
 
         public Parser(string text)
         {
@@ -232,7 +246,10 @@ namespace mc
             } while (token.Kind != SyntaxKind.EndOfFileToken);
 
             _tokens = tokens.ToArray();
+            _diagnostics.AddRange(lexer.Diagnostics);
         }
+
+        public IEnumerable<string> Diagnostics => _diagnostics;
 
         private SyntaxToken Peek(int offset)
         {
@@ -251,7 +268,7 @@ namespace mc
         public SyntaxToken Match(SyntaxKind kind)
         {
             if (Current.Kind == kind) return NextToken();
-
+            _diagnostics.Add($"Error: Unexpected token <{Current.Kind}>, expected <{kind}>");
             return new SyntaxToken(kind, Current.Position, null, null);
         }
 
